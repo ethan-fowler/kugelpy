@@ -17,8 +17,9 @@ from kugelpy.kugelpy.mutineer.logutils import LogTracker
 # Generate HCP distribution
 #===============================================================================
 class GenPBDist(object):
-    '''Class to generate and or divide a pebble distribution in channels and
-        volumes.
+    '''!
+    Class to generate and or divide a pebble distribution in channels and
+    volumes.
 
     Parameters
     ----------

@@ -4,6 +4,35 @@
 Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 '''
 
+##
+# @file reactor.py
+#
+# @section description_pebble_sorter Description
+# Module used to simulate the run-in of a PBR core or perform a jump-in calculation.
+#
+# @section libraries_pebble_sorter Libraries/Modules
+# - copy
+# - os
+# - random
+# - shutil
+# - csv
+# - time
+# - numpy
+# - scipy
+# - _pickle
+# - json
+# - kugelpy.kugelpy.kugelpy.maelstream
+# - kugelpy.kugelpy.kugelpy.pebble_bed_reactor
+# - kugelpy.kugelpy.kugelpy.pebble
+# - kugelpy.kugelpy.sea_serpent.reactor
+# - kugelpy.kugelpy.mutineer
+#
+# @section author_reactor Author(s)
+# - Created by Ryan Stewart and Paolo Balestra
+# - Modified by Ethan Fowler
+#
+# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
+
 import copy
 import os
 import random 
@@ -27,7 +56,7 @@ main_dir = os.path.dirname(os.path.realpath(__file__))
 data_path = os.path.join(main_dir, 'data')
 
 class PebbleSorter(SerpentReactor):
-    """
+    """!
     Pebble shuffeling class which wraps around Serpent to perfom fuel shuffeling in the core
     
     Parameters
@@ -35,46 +64,52 @@ class PebbleSorter(SerpentReactor):
     
     Attributes
     ----------
-    mesh_dict: dict
-        ...
-    kernel_data: dict
-        Dictionary which holds geometry information for the fuel kernels (in cm):
-        {'fuel': fuel_radius, 'buffer': buffer_radius, 'inner_pyc': inner_pyc_radius, 'sic': sic_radius, 'outer_pyc':  outer_pyc_radius, 'kernels_per_pebble': kernels_per_pebble}
-    pebble_data: dict
-        Dictionary which holds information for the pebble (in cm):
-        {'inner': pebble_inner_radius, 'outer': pebble_pouter_radius}
-    graphite_height: float
-        Initial height for graphite pebbles, all pebbles with centroid below this height will be graphite
-    burnstep: int
-        Number of steps the burn up process has gone through
-    graphite_fraction: float
-        Fraction of pebbles ablve the grahpite_height which are graphite pebbles
-    burnup_materials: dict
-        Dictionary of burnup materaial for pebbles in their previous location
-    burnup_limit: float
-        Limit for burnup by which pebbles will not be passed through the core again (currently not implemented)
+    @param _kernel_data         (dict) Dictionary which holds geometry information for the fuel kernels (in cm): {'fuel': fuel_radius, 'buffer': buffer_radius, 'inner_pyc': inner_pyc_radius, 'sic': sic_radius, 'outer_pyc':  outer_pyc_radius, 'kernels_per_pebble': kernels_per_pebble}
+    @param graphite_height      (float) Initial height for graphite pebbles, all pebbles with centroid below this height will be graphite
+    @param _burnstep            (int) Number of steps the burn up process has gone through
+    @param graphite_fraction    (float) Fraction of pebbles ablve the grahpite_height which are graphite pebbles
+    @param _burnup_materials    (dict) Dictionary of burnup materaial for pebbles in their previous location
+    @param burnup_limit         (float) Limit for burnup by which pebbles will not be passed through the core again (currently not implemented)
     """
 
        
     def __init__(self, **kwargs):
         super().__init__()
+        ## (list, default: []) 3-D ordered array containing pebble information. Organized by channel (in to out), then volume (top to bottom), then individual pebble (top to bottom). This array is populated by `read_in_pebble_dist()`.
         self._pebble_array = []
+        ## (dict, default: {}) Dictionary which holds geometry information for the fuel kernels in centimeters (cm). `setup_kernel()` sets up the fuel kernel data either using default values or by taking user inputs, `{'fuel': fuel_radius, 'buffer': buffer_radius, 'inner_pyc': inner_pyc_radius, 'sic': sic_radius, 'outer_pyc':  outer_pyc_radius, 'kernels_per_pebble': kernels_per_pebble}`.
         self._kernel_data = {}
+        ## (list, default: []) Used to store pebbles (see kugelpy.kugelpy.pebble.Pebble) which will be unloaded during refueling/pebble shifting.
         self._unloaded_pebbles = []
+        ## (list, default: []) Used to store fueled pebbles (see kugelpy.kugelpy.pebble.Pebble) which will be unloaded during refueling/pebble shifting (takes from unloaded_pebbles).
         self._unloaded_fuel_pebbles = []
+        ## (float, default: 0.0) Initial height in centimeters (cm) for graphite pebble region, all pebbles with centroids below this height will be graphite. The critical graphite layer can be found using PebbleSorter.perform_criticality_search().
         self.graphite_height = 0.0
+        ## (float, default: 0.0) Fraction of pebbles above the `graphite_height` which are graphite pebbles.
         self.graphite_fraction = 0.0
+        ## (dict, default: {}) Dictionary of burnup material for pebbles in their previous location.
         self._burnup_materials = {}
+        ## (float, default: 0.0) Keeps track of the number of 'effective full power days' of operation for the reactor.
         self._efpd_tracker = 0.0 # days
+        ## (int, default: 10000) Maximimum number of days modeled (sum of all daysteps). If `efdp_tracker` is greater than this value the simulation ends.
         self.day_limit = 10000
+        ## (int, default: 0) Tracks the step of the simulation/how many models have been run.
         self._burnstep = 0
+        ## (int, default: 1) Keeps track of which burn/time step was selected as a starting point for the next model. Note, while several daysteps are performed for each model the next time step does not necessarily occur after the final step. See `target_keff`.
         self.critical_timestep = 1 # Should be selected automatically
+        ## (float, default: 1E+6) Power in Watts of reactor
         self.power_level = 1E+6 # Power level is in Watts 
+        ## (bool, default: True) This parameter can be used to include dimples in the reactor geometry if set to True.
         self.create_dimples = True
+        ## (bool, deafult: False) Determines whether core model is simplified; True = simple core, False = fully explicit core.
         self.simple_core = False
+        ## (str, default: '2.2') Specifies the Serpent version being used to run the simulation.
         self.serpent_version = '2.2'
+        ## (float, default: 0.0) Used to keep track of full power days (sum of current_efpd*power_level)
         self._power_days = 0.
+        ## (int, default: 2) Seed used for randomization, can be used for reproducibility.
         self.random_seed = 2
+        ## (int, default:50) Used to set the nbuf parameter in Serpent.
         self.nbuf = 50
 
         # Variables required for Griffin/Pronghorn coupling
@@ -84,6 +119,7 @@ class PebbleSorter(SerpentReactor):
         self.minimum_temperature_difference = 50
         
         # Flags and variables associated with reactor temperatures
+        ## Parameter used to instruct the run-in simulation to create a new temperature distribution after each timestep if set to True.
         self.create_temperature_profile_flag = False
         self.temperature_axial_zones = None
         self.axial_heights = None

@@ -182,8 +182,8 @@ Class for storing basic reactor data which would be of use to a wide variety of 
     Specifies the Serpent version being used to run the simulation. \
 \
 **random_seed** : int, default: 2 \
-    Seed used for randomization, can be used for reproducibility. 
-
+    Seed used for randomization, can be used for reproducibility. \
+\
 **create_temperature_profile_flag** : bool, default: False \
     Parameter used to instruct the run-in simulation to create a new temperature distribution after each timestep if set to True. \
 \

@@ -64,13 +64,13 @@ Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
     Dictionary of burnup material for pebbles in their previous location. \
 \
 **PebbleSorter._efpd_tracker** : float, default: 0.0 \
-    Keeps track of the number of 'effective full power days' of operation for the reactor \
+    Keeps track of the number of 'effective full power days' of operation for the reactor. \
 \
 **PebbleSorter._burnstep** : int, default: 0 \
-    Tracks the step of the simulation/how many models have been run \
+    Tracks the step of the simulation/how many models have been run. \
 \
-**PebbleSorter._power_days** : foat, default: 0.0 \
-    Used to keep track of full power days (sum of current_efpd*power_level) 
+**PebbleSorter._power_days** : float, default: 0.0 \
+    Used to keep track of full power days (sum of current_efpd*power_level). 
 
 ### Variables required for Griffin/Pronghorn coupling
 Note, by default Griffin/Pronghorn coupling is not allowed in kugelpy. Please contact the developers at INL for access to the appropriate modules for Griffin/Pronghorn coupling with kugelpy. \

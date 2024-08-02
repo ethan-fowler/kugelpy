@@ -25,4 +25,4 @@ _tmp/
 # Specific Files
 input/gpbr200/cpld_eq/gpbr200_7ge15_microxs*
 
-kugelpy/doxygen/
+doxygen/html/
