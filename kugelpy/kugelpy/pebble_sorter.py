@@ -58,18 +58,6 @@ data_path = os.path.join(main_dir, 'data')
 class PebbleSorter(SerpentReactor):
     """!
     Pebble shuffeling class which wraps around Serpent to perfom fuel shuffeling in the core
-    
-    Parameters
-    ----------
-    
-    Attributes
-    ----------
-    @param _kernel_data         (dict) Dictionary which holds geometry information for the fuel kernels (in cm): {'fuel': fuel_radius, 'buffer': buffer_radius, 'inner_pyc': inner_pyc_radius, 'sic': sic_radius, 'outer_pyc':  outer_pyc_radius, 'kernels_per_pebble': kernels_per_pebble}
-    @param graphite_height      (float) Initial height for graphite pebbles, all pebbles with centroid below this height will be graphite
-    @param _burnstep            (int) Number of steps the burn up process has gone through
-    @param graphite_fraction    (float) Fraction of pebbles ablve the grahpite_height which are graphite pebbles
-    @param _burnup_materials    (dict) Dictionary of burnup materaial for pebbles in their previous location
-    @param burnup_limit         (float) Limit for burnup by which pebbles will not be passed through the core again (currently not implemented)
     """
 
        
@@ -119,16 +107,24 @@ class PebbleSorter(SerpentReactor):
         self.minimum_temperature_difference = 50
         
         # Flags and variables associated with reactor temperatures
-        ## Parameter used to instruct the run-in simulation to create a new temperature distribution after each timestep if set to True.
+        ## (bool, default: False) Parameter used to instruct the run-in simulation to create a new temperature distribution after each timestep if set to True.
         self.create_temperature_profile_flag = False
+        ## (int, default: None) If a temperature distribution (`create_temperature_profile_flag=True`) is being used, this fixes the number of axial temperature zones.
         self.temperature_axial_zones = None
+        ## (list, default: None) A list of heights if the user wants to manually set the temperature profile, otherwise the core is split even axially when `create_temperature_profile_flag=True`.
         self.axial_heights = None
+        ## (float, default: None) Maximum temperature of the fuel in Kelvin (K), this will occur at the bottom of the core. Only used `create_temperature_profile_flag=True`. 
         self.max_fuel_temperature = None # K
+        ## (float, default: None) Minimum temperature of the fuel in Kelvin (K),this will occur at the top of the core. Only used `create_temperature_profile_flag=True`.
         self.min_fuel_temperature = None # K
+        ## (float, default: None) Maximum temperature of all pebbles (non fuel) in Kelvin (K),this will occur at the top of the core. Only used `create_temperature_profile_flag=True`.
         self.max_pebble_temperature = None # K
+        ## (float, default: None) Minimum temperature of all pebbles (non fuel) in Kelvin (K),this will occur at the top of the core. Only used `create_temperature_profile_flag=True`. 
         self.min_pebble_temperature = None # K
         
+        ## (float, default: 900.0) 'Homogenized' reactor temperature in Kelvin (K). Used for core_scattering_library and core_xs_library.
         self.fixed_reactor_temperature = 900.0 # K
+        ## ()
         self.fuel_temperature = self.fixed_reactor_temperature
         self.pebble_temperature = self.fixed_reactor_temperature
         self.core_inlet_temperature = self.fixed_reactor_temperature
