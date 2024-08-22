@@ -12,28 +12,28 @@ Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 # jump-in, and criticality searches.
 #
 # @section notes_main Notes
-# 01. **default values** - Some tests require the initial hard-coded parameters 
+# 1. **default values** - Some tests require the initial hard-coded parameters 
 #     to remain unchanged. If any tests fail the parameter values in the code should 
 #     be compared to the default values provided in `user_variables.md` or 
 #     `other_variables.md`. 
 #
-# 02. **proper core** - refers to the the region of the core containing explicitly 
+# 2. **proper core** - refers to the the region of the core containing explicitly 
 #     modeled pebbles excluding the upper cone and lower conus. In simpler terms, 
 #     any pebble-filled region where pebbles make contact with the side wall. 
 #
-# 03. **block vs reflector** - Blocks include the radial reflector outside the 
+# 3. **block vs reflector** - Blocks include the radial reflector outside the 
 #     'proper core' and any components therein (dimples, control/safety rods, helium 
 #     riser channels). Other reflectors are located above and below the radial 
 #     reflectors and core, but these reflectors are not a part of blocks. The radial 
 #     reflector is broken into blocks to help simplify model geometry. 
 #
-# 04. **adding detectors** - Detectors can be added using the `python 
+# 4. **adding detectors** - Detectors can be added using the `python 
 #     SerpentReactor.create_user_detector()` method. Energy divisions for user-made 
 #     detectors can be created using `SerpentReactor.create_energy_grid()`. These 
 #     methods can only be called after the SerpentReactor or PebbleSorter objects 
 #     have been created. 
 #
-# 05. **reactor materials** - `Kugelpy` assumes materials fit into one of 9 non-fuel 
+# 5. **reactor materials** - `Kugelpy` assumes materials fit into one of 9 non-fuel 
 #     core materials, fuels, or TRISO layer materials.  The 9 core materials are 
 #     stored in `PebbleSorter.core_materials`, spacially-dependent fuel definitions 
 #     are stored in `PebbleSorter.equilibrium_materials`, equilibrium fuel is stored 
@@ -46,7 +46,7 @@ Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 #     non-fuel material definitions for pebbles/TRISO must be edited in pebble.py 
 #     directly for run-in/jump-in modeling. 
 #
-# 06. **material dictionary formatting** - While other information stored in 
+# 6. **material dictionary formatting** - While other information stored in 
 #     dictionaries has a function for creating those dictionaries, Serpent materials 
 #     can contain any number of isotopes so these dictionaries must be passed 
 #     directly. General material dictionaries are formatted as such: 
@@ -60,7 +60,7 @@ Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 #         {'material_name': {'temperature': float(temperature), 'moder': str(moder_name), 'moder_nuclide': int(moder_nuclide_zaid_ID), 'nuclides': dict(material_dictionary)}}
 #     ```
 #
-# 07. **pbed geometries** - Serpent's pbed geometries require a pbed geometry input 
+# 7. **pbed geometries** - Serpent's pbed geometries require a pbed geometry input 
 #     file containing the x-, y-, and z-coordinates of the pebble as well as the 
 #     pebble radius and universe name. By default, kugelpy uses a TRISO input file 
 #     containing 18,775 particles randomly dispersed in a 2.5 centimeter sphere and 
@@ -73,7 +73,7 @@ Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 #     may result in partially cut spheres or particles, which can introduce error in 
 #     the model. 
 # 
-# 08. **running on HPCs** - Kugelpy was developed on the INL HPC and is therefore 
+# 8. **running on HPCs** - Kugelpy was developed on the INL HPC and is therefore 
 #     configured to make use of MPI parallel computing. For this reason jobs are 
 #     submitted using `mpiexec`. When trying to use `perform_run_in` or 
 #     `perform_jump_in` on HPC services, it is advised that the user submit a job 
@@ -83,7 +83,7 @@ Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 #     functions which are used to run Serpent: `SerpentReactor.run_serpent()`, 
 #     `PebbleBed.write_serpent_pbs()`. 
 #
-# 09. **fatal errors** - If issues with fatal errors occur when attempting to run 
+# 9. **fatal errors** - If issues with fatal errors occur when attempting to run 
 #     Serpent models, the `nofatal` flag can be set to true which will ignore certain 
 #     fatal errors. 
 #
@@ -140,13 +140,17 @@ class SerpentReactor(object):
         self.save_state_point_frequency = 10
 
         # Serpent run parameters
-        ## ```Does nothing in SerpentReactor but is inherited by PebbleSorter```. Specifies the number of neutrons per generation for Serpent model.
+        ## ```Does nothing in SerpentReactor but is inherited by PebbleSorter``` \n
+        ##  Specifies the number of neutrons per generation for Serpent model.
         self.num_particles = 20000
-        ## ```Does nothing in SerpentReactor but is inherited by PebbleSorter```. Specifies the number of active generations for Serpent model.
+        ## ```Does nothing in SerpentReactor but is inherited by PebbleSorter``` \n
+        ## Specifies the number of active generations for Serpent model.
         self.num_generations = 400
-        ## ```Does nothing in SerpentReactor but is inherited by PebbleSorter```. Specifies the number of innactive generations for Serpent model.
+        ## ```Does nothing in SerpentReactor but is inherited by PebbleSorter``` \n
+        ## Specifies the number of innactive generations for Serpent model.
         self.skipped_generations = 40
-        ## ```Does nothing in SerpentReactor but is inherited by PebbleSorter```. Specifies the Serpent optimization option for burnup.
+        ## ```Does nothing in SerpentReactor but is inherited by PebbleSorter``` \n
+        ## Specifies the Serpent optimization option for burnup.
         self.burnup_optimization_num = 1
 
         ## This parameter includes the ```nofatal``` flag when running Serpent if set to True.
@@ -156,15 +160,20 @@ class SerpentReactor(object):
         
         ## List containing additional plots set by the user using ```Reactor.create_geom_plot()```
         self.geom_plots = []
-        ## Stores cross-section data. Key should be an integer for the temperature in Kelvin (K), value is a dictionary; the first key is the material name, the first value is the cross-section library name (ex. `grph1500`); the second key is xs_set, the value is the cross-section library extension (ex. `15c`).Stores cross-section data. Key should be an integer for the temperature in Kelvin (K), value is a dictionary; the first key is the material name, the first value is the cross-section library name (ex. `grph1500`); the second key is xs_set, the value is the cross-section library extension (ex. `15c`).
+        ## Stores cross-section data \n
+        ##  Key should be an integer for the temperature in Kelvin (K), value is a dictionary; the first key is the material name, the first value is the cross-section library name (ex `grph1500`); the second key is xs_set, the value is the cross-section library extension (ex `15c`).Stores cross-section data \n
+        #  Key should be an integer for the temperature in Kelvin (K), value is a dictionary; the first key is the material name, the first value is the cross-section library name (ex `grph1500`); the second key is xs_set, the value is the cross-section library extension (ex `15c`).
         self.xs_dict = {}
-        ## Stores material data. Key should be material name, value should be a dictionary where the key is an isotope/element name and the value is its atomic/weight fraction.
+        ## Stores material data \n
+        ## Key should be material name, value should be a dictionary where the key is an isotope/element name and the value is its atomic/weight fraction.
         self.materials = {}
         ## Internal variable which stores detector data and how to print the detectors in a Serpent input.
         self._detector_dict = {}
-        ## Stores user-made detector data. Updated using `SerpentReactor.create_user_detector()`.
+        ## Stores user-made detector data \n
+        ## Updated using `SerpentReactor.create_user_detector()`.
         self.user_detector_dict = {}
-        ## Stores energy grids which can be used in detectors. Updated using `SerpentReactor.create_energy_grid`.
+        ## Stores energy grids which can be used in detectors \n
+        ## Updated using `SerpentReactor.create_energy_grid`.
         self.energy_grid_dict = {}
 
     def build_fuel_pin(self, pin_name, fuel_mat, fuel_radius, clad_mat, clad_radius, coolant_mat):

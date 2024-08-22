@@ -63,9 +63,12 @@ class PebbleSorter(SerpentReactor):
        
     def __init__(self, **kwargs):
         super().__init__()
-        ## (list, default: []) 3-D ordered array containing pebble information. Organized by channel (in to out), then volume (top to bottom), then individual pebble (top to bottom). This array is populated by `read_in_pebble_dist()`.
+        ## (list, default: []) 3-D ordered array containing pebble information \n
+        ## Organized by channel (in to out), then volume (top to bottom), then individual pebble (top to bottom) \n
+        ## This array is populated by `read_in_pebble_dist()`.
         self._pebble_array = []
-        ## (dict, default: {}) Dictionary which holds geometry information for the fuel kernels in centimeters (cm). `setup_kernel()` sets up the fuel kernel data either using default values or by taking user inputs, `{'fuel': fuel_radius, 'buffer': buffer_radius, 'inner_pyc': inner_pyc_radius, 'sic': sic_radius, 'outer_pyc':  outer_pyc_radius, 'kernels_per_pebble': kernels_per_pebble}`.
+        ## (dict, default: {}) Dictionary which holds geometry information for the fuel kernels in centimeters (cm) \n
+        ## `setup_kernel()` sets up the fuel kernel data either using default values or by taking user inputs, `{'fuel': fuel_radius, 'buffer': buffer_radius, 'inner_pyc': inner_pyc_radius, 'sic': sic_radius, 'outer_pyc':  outer_pyc_radius, 'kernels_per_pebble': kernels_per_pebble}`.
         self._kernel_data = {}
         ## (list, default: []) Used to store pebbles (see kugelpy.kugelpy.pebble.Pebble) which will be unloaded during refueling/pebble shifting.
         self._unloaded_pebbles = []
@@ -79,11 +82,14 @@ class PebbleSorter(SerpentReactor):
         self._burnup_materials = {}
         ## (float, default: 0.0) Keeps track of the number of 'effective full power days' of operation for the reactor.
         self._efpd_tracker = 0.0 # days
-        ## (int, default: 10000) Maximimum number of days modeled (sum of all daysteps). If `efdp_tracker` is greater than this value the simulation ends.
+        ## (int, default: 10000) Maximimum number of days modeled (sum of all daysteps) \n 
+        ## If `efdp_tracker` is greater than this value the simulation ends.
         self.day_limit = 10000
         ## (int, default: 0) Tracks the step of the simulation/how many models have been run.
         self._burnstep = 0
-        ## (int, default: 1) Keeps track of which burn/time step was selected as a starting point for the next model. Note, while several daysteps are performed for each model the next time step does not necessarily occur after the final step. See `target_keff`.
+        ## (int, default: 1) Keeps track of which burn/time step was selected as a starting point for the next model \n
+        ## Note, while several daysteps are performed for each model the next time step does not necessarily occur after the final step \n
+        ## See `target_keff`.
         self.critical_timestep = 1 # Should be selected automatically
         ## (float, default: 1E+6) Power in Watts of reactor
         self.power_level = 1E+6 # Power level is in Watts 
@@ -113,59 +119,114 @@ class PebbleSorter(SerpentReactor):
         self.temperature_axial_zones = None
         ## (list, default: None) A list of heights if the user wants to manually set the temperature profile, otherwise the core is split even axially when `create_temperature_profile_flag=True`.
         self.axial_heights = None
-        ## (float, default: None) Maximum temperature of the fuel in Kelvin (K), this will occur at the bottom of the core. Only used `create_temperature_profile_flag=True`. 
+        ## (float, default: None) Maximum temperature of the fuel in Kelvin (K), this will occur at the bottom of the core \n
+        ## Only used `create_temperature_profile_flag=True`.
         self.max_fuel_temperature = None # K
-        ## (float, default: None) Minimum temperature of the fuel in Kelvin (K),this will occur at the top of the core. Only used `create_temperature_profile_flag=True`.
+        ## (float, default: None) Minimum temperature of the fuel in Kelvin (K),this will occur at the top of the core \n
+        ## Only used `create_temperature_profile_flag=True`.
         self.min_fuel_temperature = None # K
-        ## (float, default: None) Maximum temperature of all pebbles (non fuel) in Kelvin (K),this will occur at the top of the core. Only used `create_temperature_profile_flag=True`.
+        ## (float, default: None) Maximum temperature of all pebbles (non fuel) in Kelvin (K),this will occur at the top of the core \n
+        ## Only used `create_temperature_profile_flag=True`.
         self.max_pebble_temperature = None # K
-        ## (float, default: None) Minimum temperature of all pebbles (non fuel) in Kelvin (K),this will occur at the top of the core. Only used `create_temperature_profile_flag=True`. 
+        ## (float, default: None) Minimum temperature of all pebbles (non fuel) in Kelvin (K),this will occur at the top of the core \n
+        ## Only used `create_temperature_profile_flag=True`.
         self.min_pebble_temperature = None # K
         
-        ## (float, default: 900.0) 'Homogenized' reactor temperature in Kelvin (K). Used for core_scattering_library and core_xs_library.
+        ## (float, default: 900.0) 'Homogenized' reactor temperature in Kelvin (K) \n
+        ## Used for core_scattering_library and core_xs_library.
         self.fixed_reactor_temperature = 900.0 # K
-        ## ()
+        ## (float, default: fixed_reactor_temperature) 'Homogenized' fuel temperature in Kelvin (K).
         self.fuel_temperature = self.fixed_reactor_temperature
+        ## (float, default: fixed_reactor_temperature) 'Homogenized' pebble (graphite only) temperature in Kelvin (K).
         self.pebble_temperature = self.fixed_reactor_temperature
+        ## (float, default: fixed_reactor_temperature) 'Homogenized' core inlet temperature in Kelvin (K).
         self.core_inlet_temperature = self.fixed_reactor_temperature
+        ## (float, default: fixed_reactor_temperature) 'Homogenized' core outlet temperature in Kelvin (K).
         self.core_outlet_temperature = self.fixed_reactor_temperature
+        ## (float, default: 0.0) See `PebbleSorter.
         self.cr_insertion_depth = 0.0
+        # (float, default: -25.0) See `PebbleSorter
         self.sr_insertion_depth = -25.0
         
 
         # Automatically detect when the graphite pebbles are gone and transition to fuel to self.equilibrium_fuel_material
+        ## (bool, default: True) Parameter used, if True, to change `transition_fuel_flag` to True if `graphite_fraction` is less than 1% of the total number of pebbles in the core.
         self.automatic_fuel_transition = True
+        ## (bool, default: False) Parameter used, if True, to switch from start-up fuel to equilibrium fuel.
         self.transition_fuel_flag = False
         
         # Parameters assopciated with burning the core
-        self.refine_burnstep = False        
+        ## (bool, default: False) If True, permits a shortened time step to achieve an appropriate keff \n
+        ## This will cut the first depletion step by four and two, and the simulation will be rerun.
+        self.refine_burnstep = False   
+        ## (list, default: [11]) List of floats corresponding to depletion steps (in days) of the model.
         self.depletion_steps = [11]
-        self.temp_depletion_steps = [1]        
+        ## (list, default: [1]) List of floats used to store refined depletion steps (in days) should the depletion steps need to be refined, indicated by `refine_burnstep` being True.
+        self.temp_depletion_steps = [1]   
+        ## (float, default = 1.005) k-eff value used to determine which burnstep should be used for the next step \n
+        ## The final burnstep should be as close to target_keff as possible without going below `allowable_keff` \n
+        ## Also used for critical height calculations.
         self.target_keff = 1.005 # k-eff we want to end up at after each burnstep, and for the critical height calculations
+        ## (float, default: 1.0025) Minimum k-eff value permitted for the start of the next depletion step.
         self.allowable_keff = 1.0025
+        ## (float, default: 160.0) Maximum burnup permitted for a pebble in MWd/kg \n
+        ## Currently pebble reloading is not determined using burnup.
         self.burnup_limit = 160.0 # MWd/kg
+        ## (int, default: 6) Maximum number of passes through the core a pebble can undergo before it is discharged.
         self.pass_limit = 6
 
         # Serpent run parameters.
+        ## (int, default: 40000) Specifies the number of neutrons per generation for Serpent model.
         self.num_particles = 40000
+        ## (int, default: 200) Specifies the number of active generations for Serpent model.
         self.num_generations = 200
+        ## (int, default: 40) Specifies the number of innactive generations for Serpent model.
         self.skipped_generations = 40
         
+        ## (dict, default: None) Dictionary containing material definition of initial/start-up fuel.
         self.fuel_material = None
+        ## (dict, default: None) Dictionary containing material definition of fresh equilibrium fuel.
         self.equilibrium_fuel_material = None
+        ## (str, default: 'pebble_distribution') Name of Serpent input file containing pebble location and universe names.
         self.atom_density_limit = 1E-20
+        ## (str, default: pebble_surfaces.inp') Name of Serpent input file containing pebble surfaces/pebble bed geometries.
         self.pebble_distribution_file = 'pebble_distribution'
+        ## (str, deafult: '') Name of file where pebble information is stored after a completed run \n
+        ## Automatically updated during run-in simulation.
         self._step_pebble_distribution_file = ''
+        ## (str, default: pebble_surfaces.inp') Name of Serpent input file containing pebble surfaces/pebble bed geometries.
         self.pebble_surface_file = 'pebble_surfaces.inp'
+        ## (str, deafult: 'pebble_materials.inp') Name of Serpent input file containing material definitions for pebbles.
         self.pebble_material_file = 'pebble_materials.inp'
+        ## (str, default: 'pebble_cells.inp') Name of Serpent input file containing pebble/pebble bed cell definitions.
         self.pebble_cell_file = 'pebble_cells.inp'
+        ## (str, default: 'serpent.inp') Name of Serpent input file containing Serpent model parameters which are not detector, surface, cell, or material related \n 
+        ## Contains general model information.
         self.reactor_file_name = 'serpent.inp'
+        ## (str, default: 'material_detectors.inp') Name of Serpent input file containing automated and user-made detectors and energy grids.
         self.detector_file = 'material_detectors.inp'
+        ## (bool, default: True) Parameter used, if True, to save input files after a step/model is competed.
         self.keep_files = True
+        ## (int, default: 1) Used to compare to step to ensure that the model isn't starting on the wrong step/doesn't re-run steps.
         self.start_step = 1
+        ## (int, default: 1) Stores the current step of the run-in model.
         self.load_step = 1
+        ## (bool, default: True) This flag homogenizes pebbles after they are discharged from the core \n
+        ## Upon discharge, pebbles of each fuel type and pass number are gathered, and the materials of these pebbles are homogenized by using volume averaging to account for the different number of pebbles being discharge from each volume \n
+        ## This prevents an increasing number of pebble types \n
+        ## If this is set to False, pebbles will be tracked on an individual basis; this will result in thousands of materials, surfaces, and cells ensure enough memory is present to allow for this simulation.
         self.homogenize_passes = True
-        
+        ## (dict, default: \n
+        ##               {'control_rod':{'temperature': 300.0, 'moder':       'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 2.74680E-2, '5010': 8.799626E-2, '5011': 2.18617E-2}}, \n
+        ##                'safety_rod':     {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 2.74680E-2, '5010': 8.799626E-2, '5011': 2.18617E-2}}, \n
+        ##                'reflector':      {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 8.82418E-2, '5010': 9.42800E-8,  '5011': 3.79489E-7}}, \n
+        ##                'outlet_channel': {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 6.61814E-2, '5010': 7.07100E-8,  '5011': 2.84617E-7}}, \n
+        ##                'outlet_plenum':  {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 5.82396E-2, '5010': 6.22248E-8,  '5011': 2.50463E-7}}, \n
+        ##                'pebble_shoot':   {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 8.82418E-2, '5010': 7.07100E-8,  '5011': 2.84617E-7}}, \n
+        ##                'pebshell':       {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 6.61814E-2, '5010': 2.23273E-8,  '5011': 9.04368E-7}}, \n
+        ##                'graphite':       {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 8.67416E-2, '5010': 2.23273E-8,  '5011': 9.04368E-7}}, \n
+        ##                'helium':         {'temperature': 300.0, 'moder': '',      'moder_nuclide': '',   'nuclides':{ '2004': 5.28437E-4}}}) \n
+        ## Contains non-fuel material definitions for the reactor, not including pebbles.
         self.core_materials = {'control_rod':    {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 2.74680E-2, '5010': 8.799626E-2, '5011': 2.18617E-2}},
                                'safety_rod':     {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 2.74680E-2, '5010': 8.799626E-2, '5011': 2.18617E-2}},
                                'reflector':      {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 8.82418E-2, '5010': 9.42800E-8,  '5011': 3.79489E-7}},
@@ -175,43 +236,73 @@ class PebbleSorter(SerpentReactor):
                                'pebshell':       {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 6.61814E-2, '5010': 2.23273E-8,  '5011': 9.04368E-7}},
                                'graphite':       {'temperature': 300.0, 'moder': 'moder', 'moder_nuclide': 6000, 'nuclides':{ '6000': 8.67416E-2, '5010': 2.23273E-8,  '5011': 9.04368E-7}},
                                'helium':         {'temperature': 300.0, 'moder': '',      'moder_nuclide': '',   'nuclides':{ '2004': 5.28437E-4}}}
-
+        ## (str, default: data_path) Path pointing to directory containing TRISO particle distribution and original pebble distribution (contained within kugelpyu/data).
         self._path_to_data_files = data_path
+        ## (str, default: 'triso_7grHM_1.triso') Name of file contain triso particle geometry \n
+        ## This geometry is used repeatedly for all pebbles in the core.
         self.triso_dist_name = 'triso_7grHM_1.triso'
+        ## (str, default: './') Path and name of directory where output files will be saved.
         self.output_dir = './'
+        ## (str, default: ['serpent.pbs']) Names of files that can be copied over from existing files instead of rewritten.
         self.template_files = ['serpent.pbs']
+        ## (bool, default:) False This parameter determines whether or not pickled save states are produced, which can be used to re-start the model from a specific step/time.
         self.save_state_point = False
+        ## (int, default: 10) The value of this parameter determines when a pickled save state is created, if `save_state_point` is True.
         self.save_state_point_frequency = 10
-        
+        ## (bool, default: False) This is used to create a core with pebbles that can be assigned to each axial zone, allowing for jump-in to equilibrium calculation or for startup fuel to artificially be given a pass number.
         self.equilibrium_core = False
+        ## (dict, default: None) Materials to be assigned to each axial zone as required if `equilibrium_core=True`.
         self.equilibrium_materials = None
+        ## (dict, default: {}) Contains material definitions after they have been homogenizen This results in new materials which will be placed back in the core.
         self._homogenized_materials_dict = {}
+        ## (dict, default: {}) Dictionary containing the powers for pebble type and pass in an axial volume.
         self.volume_powers = {}
-        
+        ## (dict, default: None) Contains zonal temperatures in Kelvin (K) of fuel assuming a linear temperature rise through the core.
         self.fuel_temperature_profile = None
+        ## (dict, default: None) Contains zonal temperatures in Kelvin (K) of pebbles (```just graphite```) assuming a linear temperaure rise through the core.
         self.pebble_temperature_profile = None
-        
+        ## (dict, default: {}) Dictionary of the steps desired for manipulating the time-dependent PBR problem.
         self.run_in_steps = {} 
+        ## (int, deafult: 0) Used to keep track of the number of pebbles which are removed from the last axial zone due to mismatch in the number of pebbles in axial zones.
         self.lost_pebbles = 0
+        ## (int, default: 0) Index used to group pebbles together for burnup and homogenization \n
+        ## Handled in-code without user input.
         self._homogenization_group = 0
+        ## (int, default: 0) Used to track number of core passes a pebble has undergone \n
+        ## Handled in-code without user input.
         self._pebble_number = 0
+        ## (float, default: 0) Used to keep track of the effective full power days of the reactor.
         self.current_efpd = 0
+        ## (int, default: 10) Desired number of time steps to take, can be overridden by day_limit.
         self.steps = 10
+        ## (bool, default: False) If True, allows code to pick depletion steps which resulted in sub-critical state for the next step.
         self.allow_sub_crit_flag = False
+        ## (int, default: pass_limit) Maximum number of passes for equilibrium fuel.
         self.final_pass_limit = self.pass_limit
+        ## (int, default: homogenization_group) Maximum number of homogenization groups.
         self.final_homogenization_group = self._homogenization_group
         
         # Generation of critical height parameters
+        ## (float, default: 0.0005) Acceptable difference between k effectives of two models with different heights \n
+        ## If keff is less than critical_keff_tolerance between two iterations then the critical configuration has been found.
         self.critical_keff_tolerance = 0.0005
+        ## (list, default: [0.25,0.5,0.75]) Selection cases for core height when searching for critical height \n
+        ## Each value in the list will correspond to a Serpent run with that fraction of the core filled with the mixture of graphite and fuel.
         self.critical_height_fractions = [0.25,0.5,0.75]
         
         # Pebble bed reactor geometry
+        ## (float, default: 120.0) Radius of the 'proper core' region in centimeters (cm).
         self.pebble_bed_radius = 120.0
+        ## (float, default: 893.0) Height of the 'proper core' region in centimeters (cm).
         self.pebble_bed_height = 893.0
+        ## (float, default: 24.0) Radius of the pebble chute located at the bottom of the core in centimeters (cm).
         self.discharge_chute_radius = 24.0
+        ## (float, default: 170.0) Axial offset of the pebble bed pebble geometry in centimeters (cm).
         self.pebble_bed_axial_offset = 170.0
-        
+        ## (bool, default: True) Execute the run-in or approach to equilibrium in a single run (ie run each Serpent simulation with the current terminal) if set to True \n
+        ## If set to False, each Serpent run will be submitted via a separate pbs/slurm submission file.
         self.one_run = True
+        ## (bool, default: False) Create a reference burnup scheme for `burnup_limit=150` and `pass_limit=15`.
         self.burnup_flag = False
 
         for k,v in kwargs.items():
@@ -244,7 +335,7 @@ class PebbleSorter(SerpentReactor):
                 shutil.copy(os.path.join(self.path_to_micro_xs, 'os200mw_gcpbr_7ge15_microxs.xml'), os.path.join(path_to_griffin_data, 'os200mw_gcpbr_7ge15_microxs.xml'))
 
     def assign_fuel_pebble(self, x, y, z, r, p_r, channel, volume, recycled_pebble):
-        """
+        """!
         Determine what happens to a pebbles after it has been unloaded.
 
         x: float
@@ -287,7 +378,7 @@ class PebbleSorter(SerpentReactor):
     def assign_pebble_dist_variables(self, pbcyll=893.0, pblwconl=54.0, pbupconl=0.0, pbr=120.0, 
                        dcr=24.0, axial_offset=0.0, idistrfile='rawdist.txt', odistrfile='findist.txt',
                        chcurvs=None, log=None, trgtchnv=None):
-        """
+        """!
         Assign the variables for the pebble distribution reader.
         """
         self.pebble_bed_height = pbcyll
@@ -312,7 +403,7 @@ class PebbleSorter(SerpentReactor):
         self.pbr_core.write_pbr_core()
 
     def calculate_average_pebble_feature(self, feature):
-        """
+        """!
         Loop over the array to calculate the average value for a feature based on the fuel type and pass
         """
         feature_dict = {k: {k1: [] for k1 in range(self.final_homogenization_group + 1)} for k in range(self.final_pass_limit)}
@@ -332,7 +423,7 @@ class PebbleSorter(SerpentReactor):
         return final_feature_dict
         
     def calculate_discharge_bu(self):
-        """
+        """!
         Calculate the average burnup of the discharged pebbles based on the fuel type
         """
         feature_dict = {k: [] for k in range(self.final_homogenization_group + 1)}
@@ -349,7 +440,7 @@ class PebbleSorter(SerpentReactor):
         return final_feature_dict
     
     def calculate_maximum_pebble_power(self):
-        """
+        """!
         Read in the pbed.out file and determine the maximum pebble power in the core, along with the universe it is in.
         """
         pebble_power_file = f'{self._step_pebble_distribution_file}_pow{self.critical_timestep}' if self.serpent_version == '2.2' else self._step_pebble_distribution_file
@@ -369,7 +460,7 @@ class PebbleSorter(SerpentReactor):
         return (max_power, power_err[index], universe[index])
             
     def create_temperature_profile(self, min_temp, max_temp, profile, axial_zones=None, axial_heights=None):
-        """
+        """!
         Generates a new temperature profile for the fuel and/or pebble materials. 
         The temperature is based on a linear temperature rise though the core. 
         The number of axial zones determines how many different temperature will be used. 
@@ -405,7 +496,7 @@ class PebbleSorter(SerpentReactor):
         return temp_dict
 
     def create_griffin_file(self):
-        """
+        """!
         Utilize the cartographer mapping module to create a Griffin input file
         """
         from kugelpy.kugelpy.kugelpy_open_source.cartographer.griffin_mapper import GriffinMap
@@ -432,7 +523,7 @@ class PebbleSorter(SerpentReactor):
                 shutil.copy(os.path.join(self.gmap.data_path, file), os.path.join(path_to_griffin_data, file))
 
     def run_griffin(self,step):
-        """
+        """!
         Run the coupled Griffin/Pronghon simulation to get the temperature profile
         """
         #fin = open(os.path.join(self.gmap.data_path, 'griffin_run.pbs'), 'r')
@@ -461,14 +552,14 @@ class PebbleSorter(SerpentReactor):
         return dir_
 
     def determine_pebble_type(self, graphite_height, graphite_fraction, z):
-        """
+        """!
         Determine if we have a fuel pebble or graphite pebble based on the graphite height set by the user, and the graphite fraction in the core
         """
         peb_type = 'graphite' if z < graphite_height or random.random() < graphite_fraction else 'fuel'
         return peb_type
 
     def determine_reactor_state(self):
-        """
+        """!
         Determine the state of the reactor based on k-eff. 
         If we don't care about criticality, set k-eff to our last value in the list.
         If we are above the target k-eff, select the smallest k-eff that is above the target k-eff.
@@ -506,7 +597,7 @@ class PebbleSorter(SerpentReactor):
         return
 
     def equilibrium_pebble_generator(self,x,y,z,r,pr,channel_num,volume_num,fuel_temp,pebble_temp):
-        """
+        """!
         Create a fuel pebble based on equilibrium fuel material
         """
         fuel_material, pebble_pass = random.choice(self.equilibrium_materials[f'c{channel_num}v{volume_num}'])
@@ -519,7 +610,7 @@ class PebbleSorter(SerpentReactor):
         return pebble
 
     def filter_by_burnup(self, pebble):
-        """
+        """!
         Flag pebbles that have accrued a BU greater than the BU limit
         """
         if pebble._burnup >= self.burnup_limit:
@@ -527,7 +618,7 @@ class PebbleSorter(SerpentReactor):
         return False
         
     def filter_by_pass(self, pebble):
-        """
+        """!
         Glag pebbles that have taken more passes through the core than the pass limit
         """
         if pebble._num_passes >= pebble._pass_limit:
@@ -535,7 +626,7 @@ class PebbleSorter(SerpentReactor):
         return False
 
     def get_number_of_pebbles_in_volume(self, universe):
-        """
+        """!
         Get the number of pebbles of the same burnup group in a volume
         """
         last_uni = universe.split('_')[-1]
@@ -544,7 +635,7 @@ class PebbleSorter(SerpentReactor):
         return len([x for x in self._pebble_array[channel_num][volume_num] if x._universe == universe])
     
     def get_temperature(self, channel_num, volume_num):
-        """
+        """!
         Grab the temperature of the fuel and pebble based on a 2D temperature profile
         """
         fuel_temp = self.round_temperature(self.fuel_temperature_profile[f'{channel_num}{volume_num}'], base=self.minimum_temperature_difference) if self.fuel_temperature_profile else self.fuel_temperature
@@ -556,7 +647,7 @@ class PebbleSorter(SerpentReactor):
         return int(base * round(x / base))
 
     def homogenize_materials(self):
-        """
+        """!
          To homogenzie the material, we need to multiply the volume by the atom density for each region and each pass
          These atom densities are summed over the channels and divided by the total volume of pebbles being discharged
         """
@@ -599,7 +690,7 @@ class PebbleSorter(SerpentReactor):
                 discharge_volume_num = len(self._pebble_array[channel]) - 1
  
     def update_time_stepper(self, step):
-        """
+        """!
         If we fail to create a burned core with a viable k-eff, refined our depletion steps and perform our run again.
         """
         min_step1 = self.depletion_steps[0] / 4
@@ -610,7 +701,7 @@ class PebbleSorter(SerpentReactor):
         self.determine_reactor_state()
 
     def perform_burnstep(self, step=0):
-        """
+        """!
         Read in output files from the current step, shift pebbles in the core, and reassign materials for pebbles.
         """
         self._burnstep = step
@@ -640,7 +731,7 @@ class PebbleSorter(SerpentReactor):
         print(f'Executing Run-In Step {step}, at {self._efpd_tracker} EFPDs, with {num_mats} materials')
                 
     def perform_criticality_search(self):
-        """
+        """!
         Determine the height of graphite pebbles required to obtain a critical core.
         
         Parameters
@@ -688,7 +779,7 @@ class PebbleSorter(SerpentReactor):
         self._burnstep = 0
             
     def perform_run_in(self):
-        """
+        """!
         Perform a set number of steps for a core simulation.
         """
         
@@ -718,7 +809,7 @@ class PebbleSorter(SerpentReactor):
         print(f'Completed run-in with {self._burnstep} steps.')
 
     def read_burn_material(self, step=0):
-        """
+        """!
         Read in the materials from the .bumat file from the current step to create a new material for the next step/
         """
         dir_ = self.determine_data_path()
@@ -734,7 +825,7 @@ class PebbleSorter(SerpentReactor):
                 self._burnup_materials[step_][material] = self.prune_burn_material(mat_dict)
            
     def read_burn_material_restart(self):
-        """
+        """!
         Create the burnup materials for each material in each axial zone based on a previous run's materials
         """
         start_step_path = os.path.join(self.output_dir, f'step_{self.start_step}')
@@ -757,7 +848,7 @@ class PebbleSorter(SerpentReactor):
                     self._burnup_materials[step][current_block] = [(num_passes, self.prune_burn_material(mat_dict))]
 
     def read_keff(self):
-        """
+        """!
         Read k-eff from the output file and return a list with all of the keff values based on BU
         """
         dir_ = self.determine_data_path()
@@ -770,7 +861,7 @@ class PebbleSorter(SerpentReactor):
         self.keff = np.array([float(x) for x in keff[k_name]])       
                         
     def read_in_pebble_dist(self):
-        """
+        """!
         Create the pebble distribution file using GenPBDist
         
         Note: We have to make a copy of chcurvs because it gets updated in GenPBDist, if we don't copy it will update self.chcurvs as well
@@ -801,7 +892,7 @@ class PebbleSorter(SerpentReactor):
                 self._pebble_array[channel_num][volume_num].sort(key=lambda pebble : pebble._z, reverse=True) # Order the pebbles based on based on pebble height
     
     def read_volume_powers(self):
-        """
+        """!
         Read in the power detection file to grab the total power in each volume of the core.
         Power is reported in MW.
         """
@@ -838,7 +929,7 @@ class PebbleSorter(SerpentReactor):
                     correct_line = True
                 
     def refuel_pebbles(self):
-        """
+        """!
         Place pebbles that were shifted out of the core back into the top of the core. We filter based on BU/# of passses and add fresh fuel/graphite pebbles if necesssary.
         """
         random.shuffle(self._unloaded_pebbles)
@@ -887,7 +978,7 @@ class PebbleSorter(SerpentReactor):
             self._pebble_array[channel_num][0].sort(key=lambda pebble : pebble._z, reverse=True) # Order the pebbles based on based on pebble height
  
     def set_xs_set(self, temperature):
-        """
+        """!
         Set the cross-section set based on the temperature of the component.
         """
         dict_array = np.array([x for x in self.xs_dict.keys()])
@@ -895,7 +986,7 @@ class PebbleSorter(SerpentReactor):
         return self.xs_dict[temp]['xs_set'], self.xs_dict[temp]['graphite']
 
     def setup_kernel(self, fuel_radius=0.02125, buffer_radius=0.03125, inner_pyc_radius=0.03525, sic_radius=0.03875, outer_pyc_radius=0.04275, kernels_per_pebble=18687):
-        """
+        """!
         Set up the fuel kernel data
         """
         self._kernel_data['fuel'] = fuel_radius
@@ -906,7 +997,7 @@ class PebbleSorter(SerpentReactor):
         self._kernel_data['kernels_per_pebble'] = kernels_per_pebble            
 
     def setup_core(self):
-        """
+        """!
         Set up all necessary files for running a serpent job
         """      
         self.update_core_temperatures()
@@ -919,7 +1010,7 @@ class PebbleSorter(SerpentReactor):
             self.write_serpent_pbs()
         
     def shift_pebbles(self):
-        """
+        """!
         Shift pebbles in each channel down one volume. Volumes at the bottom of the core will be stored in the unloaded_pebbles list to be refueled.
         """
         self.pebbles_per_volume = {}
@@ -955,14 +1046,14 @@ class PebbleSorter(SerpentReactor):
             self.homogenize_materials()
         
     def update_core(self):
-        """
+        """!
         Update the pebble location file (pbed file) and pebble files
         """
         self.write_pebble_location_file()
         self.write_pebble_data()
 
     def update_core_temperatures(self):
-        """
+        """!
         Update the non-fuel components temperatures based on the core inlet and oulet temperature
         """
         
@@ -977,7 +1068,7 @@ class PebbleSorter(SerpentReactor):
         self.core_materials['graphite']['temperature'] = self.pebble_temperature
         
     def update_fuel_pebble(self, pebble, fuel_temp, pebble_temp):
-        """
+        """!
         Update the universe, material, and temperatures for fuel pebbles
         """
         prev_univ = pebble._universe
@@ -987,7 +1078,7 @@ class PebbleSorter(SerpentReactor):
         #return pebble
         
     def update_run_in_step(self):
-        """
+        """!
         Look at the set of steps and update and state parameters as necessary.
         We perform this by looking for the last applicable time step and setting our attibutes.
         """
@@ -1007,7 +1098,7 @@ class PebbleSorter(SerpentReactor):
             self.equilibrium_core =  False
 
     def update_temperature_profile(self):
-        """
+        """!
         Update the temperature profile based on the current temperature limits in the simulation
         """
         
@@ -1045,7 +1136,7 @@ class PebbleSorter(SerpentReactor):
                 writer.writerow(row)
 
     def calculate_pebble_fractions(self):
-        """
+        """!
         Calculate the pebble type and pass in each universe.
         """
         pebble_file_path = os.path.join(self.output_dir, f'step_{self._burnstep}', self._step_pebble_distribution_file)
@@ -1068,7 +1159,7 @@ class PebbleSorter(SerpentReactor):
         return pass_dict, pebbles
 
     def update_solution_file(self):
-        """
+        """!
         Write down important information to a csv file for ease of reading
         """        
         solution_path = os.path.join(self.output_dir, 'reactor_status.csv')
@@ -1107,7 +1198,7 @@ class PebbleSorter(SerpentReactor):
             writer.writerow(row)
             
     def write_cells(self, f, pebble):
-        """
+        """!
         Write the pebble cells file
         """
         peb_type = pebble._pebble_type
@@ -1121,7 +1212,7 @@ class PebbleSorter(SerpentReactor):
             f.write(f'cell pebble_{univ}_matrix {univ} pebshell_{univ} pebble_inner -pebble_outer\n')
 
     def create_pebble_detectors(self,pebble):
-        """
+        """!
         Create a material detector using the 'create_detector' function in sea_serpent
         """
         peb_type = pebble._pebble_type
@@ -1130,7 +1221,7 @@ class PebbleSorter(SerpentReactor):
             self.create_detector(univ, particle_type='n', materials=[f'fuel_{univ}'], responses=['-8'], micro_xs=False)
         
     def write_detectors(self,f):
-        """
+        """!
         Write the detectors present in the detector dictionary
         """
         print("Writing detectors!!!")
@@ -1143,7 +1234,7 @@ class PebbleSorter(SerpentReactor):
             f.write(values['detector_str'] + '\n')
     
     def write_energy_grids(self, f):
-        """
+        """!
         Write the energy grids present in the energy grid dictionary
         """
         for grid, values in self.energy_grid_dict.items():
@@ -1152,7 +1243,7 @@ class PebbleSorter(SerpentReactor):
 
                     
     def write_materials(self, f, pebble):
-        """
+        """!
         Write the materials for pebbles
         """
         u = pebble._universe
@@ -1177,7 +1268,7 @@ class PebbleSorter(SerpentReactor):
                         f.write(f'  {elem}.{pebble._xs_library}      {atom_den:e}\n')       
 
     def write_pebble_data(self):
-        """
+        """!
         Write down the pebble data
         """            
         self._detector_dict = {}
@@ -1230,7 +1321,7 @@ class PebbleSorter(SerpentReactor):
                 json.dump(self.pebble_material_volume_data, file)         
 
     def write_pebble_location_file(self):
-        """
+        """!
         Write the pbed file based on the pebble array
         """
 
@@ -1245,13 +1336,13 @@ class PebbleSorter(SerpentReactor):
         f.close()
         
     def write_region_header(self, f, channel, volume):
-        """
+        """!
         Header for each region to separate channels and zones
         """
         f.write(f'\n% Pebbles for Channel: {channel}, Volume Zone: {volume} \n\n')
 
     def write_serpent_input(self):
-        """
+        """!
         Write the base serpent input file.
         """
 
@@ -1305,7 +1396,7 @@ class PebbleSorter(SerpentReactor):
                 f.write('\n')
         
     def write_serpent_pbs(self):
-        """
+        """!
         If we are not running in a single run, create the PBS file for submission.
         """
         file_path = os.path.join(self.output_dir, 'serpent.pbs')
@@ -1325,7 +1416,7 @@ class PebbleSorter(SerpentReactor):
             f.write('if [ $PBS_O_WORKDIR != $HOME ]\nthen\nrm $PBS_O_WORKDIR/$PBS_JOBNAME.o$JOB_NUM\nmv $HOME/$PBS_JOBNAME.o$JOB_NUM $PBS_O_WORKDIR/$PBS_JOBNAME.o$JOB_NUM\nfi')      
         
     def write_surfaces(self, f, pebble, pebble_num):
-        """
+        """!
         Write the pebble surfaces file
         """
         f.write(f'particle {pebble_num}\n')
@@ -1336,7 +1427,7 @@ class PebbleSorter(SerpentReactor):
         self.write_triso_file(pebble_num)
 
     def write_triso_file(self, pebble_num):
-        """
+        """!
         For each unique particle type, we need a TRISO particle file, we copy a tempmlate file
         and place this in a unique directory for reference
         """

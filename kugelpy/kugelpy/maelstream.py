@@ -21,76 +21,6 @@ class GenPBDist(object):
     Class to generate and or divide a pebble distribution in channels and
     volumes.
 
-    Parameters
-    ----------
-    pbcyll: float, optional
-        Pebble bed cylindrical section height (cm).
-    pblwconl:
-        Pebble bed lower cone section height (cm).
-    pbupconl:
-        Pebble bed upper cone section height (cm).
-    pbr:
-        Pebble bed radius (cm).
-    pbdr:
-        Pebble bed radius with dimples (cm).
-    dcr:
-        Discharging chute radius (cm).
-    pr:
-        Pebble radius (cm).
-    pbpfract:
-        Pebble bed packing fraction.
-    idistrfile:
-        Input file path with raw distribution obtained from external source.
-    odistrfile:
-        Output distribution file path.
-    chcurvs:
-        Channels delimiting curves. First curve is the symmetry axis the last
-        one is the external profile of the pebble bed.
-        chcurvs = [crv00, crv01, crv02, ...] list of channels delimiting curves
-        crv00 = [[z0, z1, z2, z3,...]
-                [x0, x1, x2, x3,...]] list of z and x coordinates of the curves
-        First curve is the distribution centerline, the last is the bed
-        external profile.
-
-    trgtchnv:
-        Target number of volumes per channel (curves-1)
-    log: LogTracker, optional
-        Log file object passed by main.
-
-    Attributes
-    ----------
-    latxypitch:
-        horizontal pitch for HCP lattice.
-    latzpitch:
-        vertical pitch for HCP lattice.
-    nx:
-        number of pebbles in the x direction.
-    ny:
-        number of pebbles in the y direction.
-    xv:
-        x coordinate of the centers.
-    yv:
-        y coordinate of the centers.
-    np:
-        Number of pebbles
-    nc:
-        Number of channels (curves-1)
-    cxv:
-        Center x of the distribution.
-    cyv:
-        Center y of the distribution.
-    p1xv, p1yv, p1zv, p2xv, p2yv, p2zv:
-        x,y,z coordinates of the 2 planes used to genrate the HCP distribution.
-    chanpart:
-        List containing the Ids of pebbles per channels
-        chanpart = [ch00, ch01, ch02, ...] list of channels
-        ch00 = [1, 2, 3, 4 , 5 ...] pebbles id
-    chanvolpart:
-        List containing the Ids of pebbles per channels and volumes
-        chanvolpart = [ch00, ch01, ch02, ...] list of channels
-        ch00 = [vol00, vol01, vol02, ...] list of volumes
-        vol00 = [1, 2, 3, 4 , 5 ...] pebbles id
-
     Notes
     -----
     1. Read and write the distribution files in Serpent pbed format.
@@ -101,28 +31,51 @@ class GenPBDist(object):
                 pbr:float=100.0, pbdr:float=105.0, dcr:float=10.0, pr:float=3.0,
                 pbpfract:float=0.61, axial_offset:float=0.0, idistrfile:str=None, odistrfile:str=None,
                 chcurvs:list=None, trgtchnv:list=None, log:LogTracker=None):
-
+        ## (float, default: 1000.0) Optional. Pebble bed cylindrical section height (cm).
         self.pbcyll = pbcyll #+ axial_offset
+        ## (float, default: 0.0) Pebble bed lower cone section height (cm).
         self.pblwconl = pblwconl + axial_offset
+        ## (float, default: 0.0) Pebble bed upper cone section height (cm).
         self.pbupconl = pbupconl #+ axial_offset
+        ## (float, default: pbcyll + pblwconl + pbupconl) Centerline height of pebble bed region including the upper and lower conus.
         self.pbttlen = pbcyll + pblwconl + pbupconl 
+        ## (float, default: pbcyll - pbupconl) Centerline height of pebble bed region without conuses.
         self.pebble_bed_height_without_conuses = pbcyll - pbupconl
+        ## (float, default: 10.0) Discharging chute radius (cm).
         self.dcr = dcr
+        ## (float, default: 100.0) Pebble bed radius (cm).
         self.pbr = pbr
+        ## (float, default: 105.0) Pebble bed radius with dimples (cm).
         self.pbdr = pbdr
+        ## (float, default: 3.0) Pebble radius (cm).
         self.pr = pr
+        ## (float, default: 0.61) Pebble bed packing fraction, must be <1.0.
         self.pbpfract = pbpfract
+        ## (float, default: 0.0) Axial offset of the pebble bed geometry (used when importing pebble geometry where bottom is not at z=0).
         self.axial_offset = axial_offset
+        ## (str, default: None) Input file path with raw distribution obtained from external source.
         self.idistrfile = idistrfile
+        ## (str, default: None) Output distribution file path.
         self.odistrfile = odistrfile
+        ## (float, default: ) Horizontal pitch for HCP lattice.
         self.latxypitch = np.cbrt(4 * np.sqrt(2) / 3 * np.pi * pr ** 3 / pbpfract)
+        ## (float, default: ) Vertical pitch for HCP lattice.
         self.latzpitch = np.sqrt(2 / 3) * self.latxypitch
+        ## (int, default: ) Number of pebbles in the x direction.
         self.nx = np.ceil(2 * pbr / self.latxypitch)
+        ## (int, default: ) Number of pebbles in the y direction.
         self.ny = np.ceil(2 * pbr / (self.latxypitch * np.sqrt(3) / 2))
+        ## (int, default: ) Number of pebbles in the z direction.
         self.nz = int(np.ceil(self.pbttlen / self.latzpitch))
+        ## (list, default: None) Channels delimiting curves. First curve is the symmetry axis the last one is the external profile of the pebble bed. \n
+        ## chcurvs = [crv00, crv01, crv02, ...] list of channels delimiting curves \n
+        ## crv00 = [[z0, z1, z2, z3,...] \n
+        ##         [x0, x1, x2, x3,...]] list of z and x coordinates of the curves \n
+        ## First curve is the distribution centerline, the last is the bed external profile. \n
         self.chcurvs = chcurvs
         self.update_chcurvs()
         if chcurvs:
+            ## (int, default: ) Number of channels, or number of curves minus one.
             self.nc = len(self.chcurvs) - 1
             for crv in self.chcurvs:
                 crv[0] = np.asarray(crv[0])
@@ -130,14 +83,17 @@ class GenPBDist(object):
                 arr1inds = np.argsort(crv[0])
                 crv[0] = crv[0][arr1inds]
                 crv[1] = crv[1][arr1inds]
+        ## (int, default: 0) Number of pebbles
         self.np = 0
+        ## (int, default: None) Target number of volumes per channel
         self.trgtchnv = trgtchnv
+        ## (LogTracker, default: None) Optional. Log file object passed by main.
         self.log = log
-        
+        ## (float, default: 0.0) _
         self.lower_core_height = 0.0 if pblwconl == 0.0 else -50.548 
         
     def update_chcurvs(self):
-        """
+        """!
         Update the axial height of the pebble streams given an axial offset
         """
         for ch_num, channel in enumerate(self.chcurvs):
@@ -145,12 +101,14 @@ class GenPBDist(object):
                 self.chcurvs[ch_num][0][vol_num] += self.axial_offset
         
     def gen_hex_planes(self):
-        '''Generate the 2 basic planes for the hex distribution.
-
+        '''!
+        Generate the 2 basic planes for the hex distribution.
         '''
         # Generate cartesian distribution.
+        ## (float)  X coordinate of the 2 planes used to genrate the HCP distribution.
         self.p1xv, self.p1yv = np.meshgrid(np.arange(self.nx), np.arange(self.ny), sparse=False, indexing='xy')
         # Stretch y coordinates to np.sqrt(3) / 2 of the pitch.
+        ## (float)  Y coordinate of the 2 planes used to genrate the HCP distribution.
         self.p1yv = self.p1yv * self.latxypitch * np.sqrt(3) / 2
         self.p1yv = self.p1yv.flatten()
         #------------------------------------------------ stretch x to the pitch
@@ -159,6 +117,7 @@ class GenPBDist(object):
         self.p1xv[::2,:] += self.latxypitch / 2
         self.p1xv = self.p1xv.flatten()
         #--------------------- add z coordinate a pebble radius above the bottom
+        ## (float)  Z coordinate of the 2 planes used to genrate the HCP distribution.
         self.p1zv = np.full(self.p1xv.shape, [self.pr])
         #---------------------------------------------------------- second plane
         self.p2xv = self.p1xv + self.latxypitch / 2
@@ -166,12 +125,14 @@ class GenPBDist(object):
         self.p2zv = self.p1zv
 
     def center_the_hex_planes(self):
-        ''' Move the distribution of the 2 planess on xy to have them centered
+        '''! 
+        Move the distribution of the 2 planess on xy to have them centered
             in x=0 y=0
-
         '''
         # Find the Center coordinates.
+        ## (float) Center x of the distribution.
         self.cxv = np.mean(self.p1xv)
+        ## (float) Center y of the distribution.
         self.cyv = np.mean(self.p1yv)
         dist_array = np.sqrt((self.p1xv - self.cxv) ** 2 + (self.p1yv - self.cyv) ** 2)
         smll_diff = dist_array.argmin()
@@ -183,16 +144,19 @@ class GenPBDist(object):
         self.p2yv -= self.cyv
 
     def gen_hcp_raw_distr(self):
-        '''Generate raw hexagonal compact regular pebble distribution on a
+        '''!
+        Generate raw hexagonal compact regular pebble distribution on a
             parallelepiped geometry.
-
         '''
         if self.log: self.log.lprint('Generate HCP distribution', NTab=2, fllchar='-')
         if self.log: self.log.lprint('Porosity: %1.4f' % (self.pbpfract), NTab=3, fllchar='')
         self.gen_hex_planes()
         self.center_the_hex_planes()
+        ## (float) x coordinate of the centers.
         self.xv = self.p1xv
+        ## (float) y coordinate of the centers.
         self.yv = self.p1yv
+        ## (float) z coordinate of the centers.
         self.zv = self.p1zv
         for i in range(1, self.nz):
             if (i % 2) == 0:
@@ -207,7 +171,8 @@ class GenPBDist(object):
         if self.log: self.log.lprint('Total number of pebbles: %d' % (self.np), NTab=3, fllchar='')
 
     def read_raw_distr(self):
-        ''' Read a file of coordinates in the form:
+        '''! 
+        Read a file of coordinates in the form:
             x0 y0 z0
             x1 y1 z1
             x2 y2 z2
@@ -240,12 +205,12 @@ class GenPBDist(object):
         if self.log: self.log.lprint('Total number of pebbles: %d' % (self.np), NTab=3, fllchar='')
 
     def write_distr(self):
-        ''' Write a file of coordinates in the form:
+        '''! 
+        Write a file of coordinates in the form:
             x0 y0 z0
             x1 y1 z1
             x2 y2 z2
             ...
-
         '''
         if self.log: self.log.lprint('Write pebble distribution', fllchar='=')
         if self.log: self.log.lprint('Writing distribution file: %s' % (self.odistrfile), NTab=2, fllchar='')
@@ -259,8 +224,8 @@ class GenPBDist(object):
         if self.log: self.log.lprint('Total number of pebbles: %d' % (self.np), NTab=2, fllchar='')
 
     def cut_cylinder(self):
-        '''Exclude the pebbles outside the cylinder with radius self.pbr.
-
+        '''!
+        Exclude the pebbles outside the cylinder with radius self.pbr.
         '''
         if self.log: self.log.lprint('Cutting cylinder vertically', NTab=2, fllchar='-')
         if self.log: self.log.lprint('Cylinder radius: %1.4f (cm)' % (self.pbr), NTab=3, fllchar='')
@@ -273,9 +238,9 @@ class GenPBDist(object):
         if self.log: self.log.lprint('Total number of pebbles: %d' % (self.np), NTab=3, fllchar='')
 
     def cut_lower_conus(self):
-        '''Exclude the pebbles outside the lower conus with lower radius
+        '''!
+        Exclude the pebbles outside the lower conus with lower radius
             self.pblwconl.
-
         '''
         if self.log: self.log.lprint('Cutting lower conus', NTab=2, fllchar='-')
         if self.log: self.log.lprint('Conus height: %1.4f (cm)' % (self.pblwconl), NTab=3, fllchar='')
@@ -298,9 +263,9 @@ class GenPBDist(object):
         if self.log: self.log.lprint('Total number of pebbles: %d' % (self.np), NTab=3, fllchar='')
 
     def cut_upper_conus(self):
-        '''Exclude the pebbles outside the upper conus with conus height
+        '''!
+        Exclude the pebbles outside the upper conus with conus height
             self.pbupconl.
-
         '''
         if self.log: self.log.lprint('Cutting upper conus', NTab=2, fllchar='-')
         if self.log: self.log.lprint('Conus height: %1.4f (cm)' % (self.pbupconl), NTab=3, fllchar='')
@@ -337,8 +302,8 @@ class GenPBDist(object):
         if self.log: self.log.lprint('Total number of pebbles: %d' % (self.np), NTab=3, fllchar='')
         
     def gen_distr(self):
-        '''Generate HCP distribution with optional upper and lower conuses.
-
+        '''!
+        Generate HCP distribution with optional upper and lower conuses.
         '''
         if self.log: self.log.lprint('Generate pebble distribution', fllchar='=')
         if self.idistrfile:
@@ -351,12 +316,15 @@ class GenPBDist(object):
         self.cut_lower_core()
 
     def divide_channels(self):
-        '''Divide the distribution in channels generating list of list of IDs.
-
+        '''!
+        Divide the distribution in channels generating list of list of IDs.
         '''
         if self.log: self.log.lprint('Divide distribution in channels', fllchar='=')
         pebble2keep = self.xv == self.xv
         ttpebbles = 0
+        ## (list) List containing the Ids of pebbles per channels \n
+        ## chanpart = [ch00, ch01, ch02, ...] list of channels \n
+        ## ch00 = [1, 2, 3, 4 , 5 ...] pebbles id \n
         self.chanpart = []
         self.channp = []
         for cn in range(1, self.nc + 1):
@@ -385,11 +353,15 @@ class GenPBDist(object):
                 % (ttpebbles, self.np), NTab=3, fllchar='')
 
     def divide_sort_volumes(self):
-        '''Divide the distribution in volumes channels generating list of list
+        '''!
+        Divide the distribution in volumes channels generating list of list
             of list of IDs.
-
         '''
         if self.log: self.log.lprint('Divide Channels in volumes', fllchar='=')
+        ## (list) List containing the Ids of pebbles per channels and volumes \n
+        ## chanvolpart = [ch00, ch01, ch02, ...] list of channels \n
+        ## ch00 = [vol00, vol01, vol02, ...] list of volumes \n
+        ## vol00 = [1, 2, 3, 4 , 5 ...] pebbles id \n
         self.chanvolpart = []
         for cn in range(self.nc):
             if self.log: self.log.lprint('Channel: %02d Number of volumes: %02d '

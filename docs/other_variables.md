@@ -19,19 +19,19 @@ Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
     Name of material composing the outlet channel (see figure). \
 \
 **PebbleBedReactor._safety_rod_material** : str, default: 'safety_rod' \
-    Name of material composing the safety rods/shutdown rods \
+    Name of material composing the safety rods/shutdown rods. \
 \
 **PebbleBedReactor._control_rod_material** : str, default: 'control_rod' \
-    Name of material composing the control rods \
+    Name of material composing the control rods. \
 \
 **PebbleBedReactor._cavity_material** : str, default: 'helium' \
-    Name of material filling reactor cavities (background universe for pebble bed geometry) \
+    Name of material filling reactor cavities (background universe for pebble bed geometry). \
 \
 **PebbleBedReactor._riser_material** : str, default: 'riser' \
-    Name of material filling the helium riser region \
+    Name of material filling the helium riser region. \
 \
 **PebbleBedReactor._control_rod_cavity_material** : str, default: 'helium' \
-    Name of material filling the empty region(s) of the control rods 
+    Name of material filling the empty region(s) of the control rods. 
 
 ### The following dictionaries are populated by the code using other parameters which can be set by the user. Attempting to edit these directories directly could have adverse effects. (Let's set these as private later)
 **PebbleBedReactor._block_dict** : dict, default: {} \
@@ -108,11 +108,15 @@ Note, by default Griffin/Pronghorn coupling is not allowed in kugelpy. Please co
     Inner radius of the pebble surrounding the graphite matrix [cm]. \
 \
 **Pebble._radius** : float, default: radius \
-    Dictionary of the material in the pebble. Takes the form: {'material_name': {'ZAID1': float, 'ZAID2': float, ...}}. \
-\
-**Pebble._material** : dict, default: \
+
+**Pebble._materials** : dict, default: \
 {'matrix':   {'6000': 9.22570E-2, '5010': 2.28336E-9, '5011': 9.24876E-9},\
 'pebshell': {'6000': 6.61814E-2, '5010': 2.23273E-8,  '5011': 9.04368E-7}} \
+    Dictionary of the material in the pebble. Takes the form: {'material_name': {'ZAID1': float, 'ZAID2': float, ...}}. \
+\
+**Pebble._geometry** : dict, default: \
+{'matrix':    {'radius': self._inner_radius,    'number_of_instance': 1, 'volume': 0.0}, \
+ 'pebshell':  {'radius': radius, 'number_of_instance': 1, 'volume': 0.0}} \
     Dictionary of the geometry in the pebble. 
         Each entry describes a part of the geometry, where a given radius and number of instances are used to calculate the volume. Takes the form: {'geometry_name': {'radius': float, 'number_of_instances': int, 'volume': float}}. \
 \
